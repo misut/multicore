@@ -7,13 +7,17 @@
 
 #include <iostream>
 #include <deque>
-#include <tuple>
 
 #include "paraskiplist.h"
 
 #define MAX_THREAD 8
 
 using namespace std;
+
+typedef struct typle {
+	char action;
+	long num;
+} typle;
 
 // aggregate variables
 long sum = 0;
@@ -30,21 +34,25 @@ pthread_mutex_t mtx_sum;
 pthread_barrier_t barrier;
 
 // function prototypes
-int loadwork(deque<tuple<char, long>>& wq, char* fn) {
+typle make_typle(char action, long num) {
+	typle tpl = {action, num};
+	return tpl;
+}
+int loadwork(deque<typle>& wq, char* fn) {
     FILE* fin = fopen(fn, "r");
     char action;
     long num;
     while(fscanf(fin, "%c %ld\n", &action, &num) > 0) {
-        wq.push_back(make_tuple(action, num));
+        wq.push_back(make_typle(action, num));
 	}
     fclose(fin);
     return EXIT_SUCCESS;
 }
 
-void *dowork(void* tpl) {
-	tuple<char, long> typle = *(tuple<char, long> *)tpl;
-	char action = get<0>(typle);
-	char num = get<1>(typle);
+void *dowork(void* vp) {
+	typle tpl = *(typle*)vp;
+	char action = tpl.action;
+	char num = tpl.num;
 	switch(action) {
 		case 'i':
 			list.insert(num, num);
@@ -83,7 +91,6 @@ int main(int argc, char* argv[])
 {
     struct timespec start, stop;
 
-
     // check and parse command line options
     if (argc != 2) {
         printf("Usage: %s <infile>\n", argv[0]);
@@ -93,7 +100,7 @@ int main(int argc, char* argv[])
 
     clock_gettime( CLOCK_REALTIME, &start);
 
-    deque< tuple<char,long> > workqueue;
+    deque<typle> workqueue;
 
     // load input file
     long sz;
